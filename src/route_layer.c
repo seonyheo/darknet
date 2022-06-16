@@ -66,6 +66,9 @@ void resize_route_layer(route_layer *l, network *net)
     l->out_c = l->out_c / l->groups;
     l->outputs = l->outputs / l->groups;
     l->inputs = l->outputs;
+    if (!l->realloc_memory) {
+        return;
+    }
     l->delta = (float*)xrealloc(l->delta, l->outputs * l->batch * sizeof(float));
     l->output = (float*)xrealloc(l->output, l->outputs * l->batch * sizeof(float));
 

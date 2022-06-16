@@ -1196,7 +1196,7 @@ void parse_net_options(list *options, network *net)
     net->dynamic_minibatch = option_find_int_quiet(options, "dynamic_minibatch", 0);
     net->optimized_memory = option_find_int_quiet(options, "optimized_memory", 0);
     net->workspace_size_limit = (size_t)1024*1024 * option_find_float_quiet(options, "workspace_size_limit_MB", 1024);  // 1024 MB by default
-
+    net->realloc_memory = 1;
 
     net->adam = option_find_int_quiet(options, "adam", 0);
     if(net->adam){
@@ -1664,6 +1664,7 @@ network parse_network_cfg_custom(char *filename, int batch, int time_steps)
         l.dontload = option_find_int_quiet(options, "dontload", 0);
         l.dontloadscales = option_find_int_quiet(options, "dontloadscales", 0);
         l.learning_rate_scale = option_find_float_quiet(options, "learning_rate", 1);
+        l.realloc_memory = 1;
         option_unused(options);
 
         if (l.stopbackward == 1) printf(" ------- previous layers are frozen ------- \n");

@@ -61,6 +61,9 @@ void resize_cost_layer(cost_layer *l, int inputs)
 {
     l->inputs = inputs;
     l->outputs = inputs;
+    if (!l->realloc_memory) {
+        return;
+    }
     l->delta = (float*)xrealloc(l->delta, inputs * l->batch * sizeof(float));
     l->output = (float*)xrealloc(l->output, inputs * l->batch * sizeof(float));
 #ifdef GPU

@@ -483,7 +483,7 @@ void forward_convolutional_layer_gpu(convolutional_layer l, network_state state)
 
         if (l.batch_normalize)
         {
-            if (state.train && !state.net.adversarial) // Training
+            if (state.train && !state.net.adversarial && l.update_gpu) // Training
             {
                 simple_copy_ongpu(l.outputs*l.batch / 2, output16, l.x_gpu);
                 //copy_ongpu(l.outputs*l.batch / 2, output16, 1, l.x_gpu, 1);

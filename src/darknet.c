@@ -17,6 +17,7 @@ extern void predict_classifier(char *datacfg, char *cfgfile, char *weightfile, c
 extern void run_voxel(int argc, char **argv);
 extern void run_yolo(int argc, char **argv);
 extern void run_detector(int argc, char **argv);
+extern void run_detector_with_sensitivity(int argc, char **argv);
 extern void run_coco(int argc, char **argv);
 extern void run_writing(int argc, char **argv);
 extern void run_captcha(int argc, char **argv);
@@ -491,6 +492,8 @@ int main(int argc, char **argv)
         run_super(argc, argv);
     } else if (0 == strcmp(argv[1], "detector")){
         run_detector(argc, argv);
+    } else if (0 == strcmp(argv[1], "sensitivity")){
+        run_detector_with_sensitivity(argc, argv);
     } else if (0 == strcmp(argv[1], "detect")){
         float thresh = find_float_arg(argc, argv, "-thresh", .24);
 		int ext_output = find_arg(argc, argv, "-ext_output");

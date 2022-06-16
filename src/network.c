@@ -559,7 +559,7 @@ int resize_network(network *net, int w, int h)
 {
 #ifdef GPU
     cuda_set_device(net->gpu_index);
-    if(gpu_index >= 0){
+    if(net->realloc_memory && gpu_index >= 0){
         cuda_free(net->workspace);
         if (net->input_gpu) {
             cuda_free(*net->input_gpu);
@@ -637,7 +637,7 @@ int resize_network(network *net, int w, int h)
             resize_normalization_layer(&l, w, h);
         }else if(l.type == COST){
             resize_cost_layer(&l, inputs);
-        }else{
+        }else if(l.w != w || l.h != h){
             fprintf(stderr, "Resizing type %d \n", (int)l.type);
             error("Cannot resize this type of layer", DARKNET_LOC);
         }
@@ -650,6 +650,10 @@ int resize_network(network *net, int w, int h)
             h = l.out_h;
         }
         //if(l.type == AVGPOOL) break;
+    }
+
+    if (!net->realloc_memory) {
+        return 0;
     }
 #ifdef GPU
     const int size = get_network_input_size(*net) * net->batch;
@@ -811,10 +815,14 @@ int num_detections_batch(network *net, float thresh, int batch)
     return s;
 }
 
-detection *make_network_boxes(network *net, float thresh, int *num)
+detection *make_network_boxes(network *net, float thresh, int *num) {
+    return make_network_boxes_with_index(net, thresh, num, net->n - 1);
+}
+
+detection *make_network_boxes_with_index(network *net, float thresh, int *num, int index)
 {
     int i;
-    layer l = net->layers[net->n - 1];
+    layer l = net->layers[index];
     for (i = 0; i < net->n; ++i) {
         layer l_tmp = net->layers[i];
         if (l_tmp.type == YOLO || l_tmp.type == GAUSSIAN_YOLO || l_tmp.type == DETECTION || l_tmp.type == REGION) {
@@ -842,10 +850,10 @@ detection *make_network_boxes(network *net, float thresh, int *num)
     return dets;
 }
 
-detection *make_network_boxes_batch(network *net, float thresh, int *num, int batch)
+detection *make_network_boxes_batch_with_index(network *net, float thresh, int *num, int batch, int index)
 {
     int i;
-    layer l = net->layers[net->n - 1];
+    layer l = net->layers[index];
     for (i = 0; i < net->n; ++i) {
         layer l_tmp = net->layers[i];
         if (l_tmp.type == YOLO || l_tmp.type == GAUSSIAN_YOLO || l_tmp.type == DETECTION || l_tmp.type == REGION) {
@@ -872,6 +880,10 @@ detection *make_network_boxes_batch(network *net, float thresh, int *num, int ba
         dets[i].embedding_size = l.embedding_size;
     }
     return dets;
+}
+
+detection *make_network_boxes_batch(network *net, float thresh, int *num, int batch) {
+    return make_network_boxes_batch_with_index(net, thresh, num, batch, net->n-1);
 }
 
 void custom_get_region_detections(layer l, int w, int h, int net_w, int net_h, float thresh, int *map, float hier, int relative, detection *dets, int letter)
@@ -961,11 +973,15 @@ void fill_network_boxes_batch(network *net, int w, int h, float thresh, float hi
     }
 }
 
-detection *get_network_boxes(network *net, int w, int h, float thresh, float hier, int *map, int relative, int *num, int letter)
+detection *get_network_boxes_with_index(network *net, int w, int h, float thresh, float hier, int *map, int relative, int *num, int letter, int index)
 {
-    detection *dets = make_network_boxes(net, thresh, num);
+    detection *dets = make_network_boxes_with_index(net, thresh, num, index);
     fill_network_boxes(net, w, h, thresh, hier, map, relative, dets, letter);
     return dets;
+}
+
+detection *get_network_boxes(network *net, int w, int h, float thresh, float hier, int *map, int relative, int *num, int letter) {
+    return get_network_boxes_with_index(net, w, h, thresh, hier, map, relative, num, letter, net->n-1);
 }
 
 void free_detections(detection *dets, int n)
@@ -1063,20 +1079,26 @@ float *network_predict_image(network *net, image im)
     return p;
 }
 
-det_num_pair* network_predict_batch(network *net, image im, int batch_size, int w, int h, float thresh, float hier, int *map, int relative, int letter)
+
+det_num_pair* network_predict_batch_with_index(network *net, image im, int batch_size, int w, int h, float thresh, float hier, int *map, int relative, int letter, int index)
 {
     network_predict(*net, im.data);
     det_num_pair *pdets = (struct det_num_pair *)calloc(batch_size, sizeof(det_num_pair));
     int num;
     int batch;
     for(batch=0; batch < batch_size; batch++){
-        detection *dets = make_network_boxes_batch(net, thresh, &num, batch);
+        detection *dets = make_network_boxes_batch_with_index(net, thresh, &num, batch, index);
         fill_network_boxes_batch(net, w, h, thresh, hier, map, relative, dets, letter, batch);
         pdets[batch].num = num;
         pdets[batch].dets = dets;
     }
     return pdets;
 }
+
+det_num_pair* network_predict_batch(network *net, image im, int batch_size, int w, int h, float thresh, float hier, int *map, int relative, int letter) {
+    return network_predict_batch_with_index(net, im, batch_size, w, h, thresh, hier, map, relative, letter, net->n-1);
+}
+
 
 float *network_predict_image_letterbox(network *net, image im)
 {
@@ -1539,6 +1561,14 @@ void restore_network_recurrent_state(network net)
     }
 }
 
+void disable_memory_realloc(network *net)
+{
+    net->realloc_memory = 0;
+    int k;
+    for (k = 0; k < net->n; ++k) {
+        net->layers[k].realloc_memory = 0;
+    }
+}
 
 int is_ema_initialized(network net)
 {

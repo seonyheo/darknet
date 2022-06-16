@@ -907,6 +907,15 @@ void resize_convolutional_layer(convolutional_layer *l, int w, int h)
     l->outputs = l->out_h * l->out_w * l->out_c;
     l->inputs = l->w * l->h * l->c;
 
+    if (!l->realloc_memory) {
+#ifdef GPU
+#ifdef CUDNN
+        cudnn_convolutional_setup(l, cudnn_fastest, 0);
+#endif
+#endif
+        l->workspace_size = get_convolutional_workspace_size(*l);
+        return;
+    }
 
     l->output = (float*)xrealloc(l->output, total_batch * l->outputs * sizeof(float));
     if (l->train) {

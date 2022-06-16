@@ -1038,6 +1038,11 @@ float validate_detector_map(char *datacfg, char *cfgfile, char *weightfile, floa
     int *tp_for_thresh_per_class = (int*)xcalloc(classes, sizeof(int));
     int *fp_for_thresh_per_class = (int*)xcalloc(classes, sizeof(int));
 
+    char fscore_buf[256];
+    char *base = basecfg(cfgfile);
+    sprintf(fscore_buf, "analysis/%s_%d_%d.scores", base, net.w, net.h);
+    FILE* fscore = fopen(fscore_buf, "wb");
+
     for (t = 0; t < nthreads; ++t) {
         args.path = paths[i + t];
         args.im = &buf[t];
@@ -1106,6 +1111,10 @@ float validate_detector_map(char *datacfg, char *cfgfile, char *weightfile, floa
 
             const int checkpoint_detections_count = detections_count;
 
+            int tp_for_thresh_per_image = 0;
+            int fp_for_thresh_per_image = 0;
+            int unique_truth_count_per_image = 0;
+
             int i;
             for (i = 0; i < nboxes; ++i) {
 
@@ -1167,11 +1176,13 @@ float validate_detector_map(char *datacfg, char *cfgfile, char *weightfile, floa
                             if (truth_index > -1 && found == 0) {
                                 avg_iou += max_iou;
                                 ++tp_for_thresh;
+                                ++tp_for_thresh_per_image;
                                 avg_iou_per_class[class_id] += max_iou;
                                 tp_for_thresh_per_class[class_id]++;
                             }
                             else{
                                 fp_for_thresh++;
+                                fp_for_thresh_per_image++;
                                 fp_for_thresh_per_class[class_id]++;
                             }
                         }
@@ -1180,6 +1191,7 @@ float validate_detector_map(char *datacfg, char *cfgfile, char *weightfile, floa
             }
 
             unique_truth_count += num_labels;
+            unique_truth_count_per_image += num_labels;
 
             //static int previous_errors = 0;
             //int total_errors = fp_for_thresh + (unique_truth_count - tp_for_thresh);
@@ -1196,6 +1208,8 @@ float validate_detector_map(char *datacfg, char *cfgfile, char *weightfile, floa
             free(id);
             free_image(val[t]);
             free_image(val_resized[t]);
+
+            fprintf(fscore, "%f,%f,%f\n", ((float) 2 * tp_for_thresh_per_image) / ((float) tp_for_thresh_per_image + (float) fp_for_thresh_per_image + (float) unique_truth_count_per_image), ((float) tp_for_thresh_per_image) / ((float) tp_for_thresh_per_image + (float) fp_for_thresh_per_image), ((float) tp_for_thresh_per_image) / ((float) unique_truth_count_per_image));
         }
     }
 
@@ -1411,6 +1425,8 @@ float validate_detector_map(char *datacfg, char *cfgfile, char *weightfile, floa
     if (thr) free(thr);
     if (buf) free(buf);
     if (buf_resized) free(buf_resized);
+
+    if (fscore != NULL) fclose(fscore);
 
     return mean_average_precision;
 }

@@ -692,6 +692,7 @@ struct layer {
     void* poolingDesc;
 #endif  // CUDNN
 //#endif  // GPU
+    int realloc_memory;
 };
 
 
@@ -834,6 +835,7 @@ typedef struct network {
     int optimized_memory;
     int dynamic_minibatch;
     size_t workspace_size_limit;
+    int realloc_memory;
 } network;
 
 // network.h
@@ -1033,7 +1035,9 @@ LIB_API void diounms_sort(detection *dets, int total, int classes, float thresh,
 LIB_API float *network_predict(network net, float *input);
 LIB_API float *network_predict_ptr(network *net, float *input);
 LIB_API detection *get_network_boxes(network *net, int w, int h, float thresh, float hier, int *map, int relative, int *num, int letter);
+LIB_API detection *get_network_boxes_with_index(network *net, int w, int h, float thresh, float hier, int *map, int relative, int *num, int letter, int index);
 LIB_API det_num_pair* network_predict_batch(network *net, image im, int batch_size, int w, int h, float thresh, float hier, int *map, int relative, int letter);
+LIB_API det_num_pair* network_predict_batch_with_index(network *net, image im, int batch_size, int w, int h, float thresh, float hier, int *map, int relative, int letter, int index);
 LIB_API void free_detections(detection *dets, int n);
 LIB_API void free_batch_detections(det_num_pair *det_num_pairs, int n);
 LIB_API void fuse_conv_batchnorm(network net);
@@ -1043,6 +1047,7 @@ LIB_API char *detection_to_json(detection *dets, int nboxes, int classes, char *
 LIB_API layer* get_network_layer(network* net, int i);
 //LIB_API detection *get_network_boxes(network *net, int w, int h, float thresh, float hier, int *map, int relative, int *num, int letter);
 LIB_API detection *make_network_boxes(network *net, float thresh, int *num);
+LIB_API detection *make_network_boxes_with_index(network *net, float thresh, int *num, int index);
 LIB_API void reset_rnn(network *net);
 LIB_API float *network_predict_image(network *net, image im);
 LIB_API float *network_predict_image_letterbox(network *net, image im);

@@ -54,6 +54,11 @@ void resize_upsample_layer(layer *l, int w, int h)
     }
     l->outputs = l->out_w*l->out_h*l->out_c;
     l->inputs = l->h*l->w*l->c;
+
+    if (!l->realloc_memory) {
+        return;
+    }
+
     l->delta = (float*)xrealloc(l->delta, l->outputs * l->batch * sizeof(float));
     l->output = (float*)xrealloc(l->output, l->outputs * l->batch * sizeof(float));
 

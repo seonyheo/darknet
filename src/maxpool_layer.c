@@ -216,6 +216,14 @@ void resize_maxpool_layer(maxpool_layer *l, int w, int h)
     l->outputs = l->out_w * l->out_h * l->out_c;
     int output_size = l->outputs * l->batch;
 
+    if (!l->realloc_memory) {
+#ifdef GPU
+        if(l->avgpool) cudnn_local_avgpool_setup(l);
+        else cudnn_maxpool_setup(l);
+#endif
+        return;
+    }
+
     if (l->train) {
         if (!l->avgpool) l->indexes = (int*)xrealloc(l->indexes, output_size * sizeof(int));
         l->delta = (float*)xrealloc(l->delta, output_size * sizeof(float));

@@ -262,7 +262,7 @@ void forward_batchnorm_layer_gpu(layer l, network_state state)
         return;
     }
 
-    if (state.train) {
+    if (state.train && l.update_gpu) {
         simple_copy_ongpu(l.outputs*l.batch, l.output_gpu, l.x_gpu);
 
         // cbn

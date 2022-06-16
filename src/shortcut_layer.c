@@ -99,17 +99,30 @@ void resize_shortcut_layer(layer *l, int w, int h, network *net)
     l->h = l->out_h = h;
     l->outputs = w*h*l->out_c;
     l->inputs = l->outputs;
-    if (l->train) l->delta = (float*)xrealloc(l->delta, l->outputs * l->batch * sizeof(float));
-    l->output = (float*)xrealloc(l->output, l->outputs * l->batch * sizeof(float));
 
     int i;
     for (i = 0; i < l->n; ++i) {
         int index = l->input_layers[i];
         l->input_sizes[i] = net->layers[index].outputs;
+        assert(l->w == net->layers[index].out_w && l->h == net->layers[index].out_h);
+    }
+
+    memcpy_ongpu(l->input_sizes_gpu, l->input_sizes, l->n * sizeof(int));
+
+    if (!l->realloc_memory) {
+        return;
+    }
+
+    if (l->train) l->delta = (float*)xrealloc(l->delta, l->outputs * l->batch * sizeof(float));
+    l->output = (float*)xrealloc(l->output, l->outputs * l->batch * sizeof(float));
+
+    for (i = 0; i < l->n; ++i) {
+        int index = l->input_layers[i];
+        //l->input_sizes[i] = net->layers[index].outputs;
         l->layers_output[i] = net->layers[index].output;
         l->layers_delta[i] = net->layers[index].delta;
 
-        assert(l->w == net->layers[index].out_w && l->h == net->layers[index].out_h);
+        //assert(l->w == net->layers[index].out_w && l->h == net->layers[index].out_h);
     }
 
     if (l->activation == SWISH || l->activation == MISH) l->activation_input = (float*)realloc(l->activation_input, l->batch*l->outputs * sizeof(float));

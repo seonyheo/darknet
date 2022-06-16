@@ -93,6 +93,10 @@ void resize_yolo_layer(layer *l, int w, int h)
     l->outputs = h*w*l->n*(l->classes + 4 + 1);
     l->inputs = l->outputs;
 
+    if (!l->realloc_memory) {
+        return;
+    }
+
     if (l->embedding_output) l->embedding_output = (float*)xrealloc(l->output, l->batch * l->embedding_size * l->n * l->h * l->w * sizeof(float));
     if (l->labels) l->labels = (int*)xrealloc(l->labels, l->batch * l->n * l->h * l->w * sizeof(int));
     if (l->class_ids) l->class_ids = (int*)xrealloc(l->class_ids, l->batch * l->n * l->h * l->w * sizeof(int));
@@ -686,7 +690,7 @@ void forward_yolo_layer(const layer l, network_state state)
 
     // delta is zeroed
     memset(l.delta, 0, l.outputs * l.batch * sizeof(float));
-    if (!state.train) return;
+    if (!state.train || state.net.layers[state.net.n-1].type != YOLO) return;
 
     int i;
     for (i = 0; i < l.batch * l.w*l.h*l.n; ++i) l.labels[i] = -1;
@@ -1204,7 +1208,7 @@ void forward_yolo_layer_gpu(const layer l, network_state state)
     cuda_pull_array(l.output_gpu, l.output, l.batch*l.outputs);
     memcpy(in_cpu, l.output, l.batch*l.outputs*sizeof(float));
     float *truth_cpu = 0;
-    if (state.truth) {
+    if (state.truth && state.net.layers[state.net.n-1].type == YOLO) {
         int num_truth = l.batch*l.truths;
         truth_cpu = (float *)xcalloc(num_truth, sizeof(float));
         cuda_pull_array(state.truth, truth_cpu, num_truth);
